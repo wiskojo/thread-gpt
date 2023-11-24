@@ -1,0 +1,14 @@
+gradio==4.4.1
+gradio-pdf==0.0.3
+layoutparser==0.3.4
+openai==1.2.4
+pdf2image==1.16.3
+pydantic==2.4.2
+pytesseract==0.3.10
+python_dotenv==1.0.0
+Pillow==9.5.0
+requests==2.31.0
+torch==2.0.0
+torchvision==0.15.1
+tweepy==4.14.0
+tweet-counter==0.1.0
