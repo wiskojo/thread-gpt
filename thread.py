@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
@@ -313,7 +314,7 @@ def create_thread(
             with open(pdf_path, "wb") as f:
                 f.write(pdf_content)
         elif os.path.isfile(pdf_url_or_path):
-            pdf_path = pdf_url_or_path
+            shutil.copy(pdf_url_or_path, pdf_path)
             with open(pdf_path, "rb") as f:
                 pdf_content = f.read()
         else:

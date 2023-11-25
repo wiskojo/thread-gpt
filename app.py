@@ -29,7 +29,7 @@ def fix_image_paths_in_thread(thread, base_path):
 def run_create_thread(
     url_or_path, openai_api_key, assistant_instructions, assistant_model
 ):
-    if openai_api_key is None:
+    if not openai_api_key:
         raise gr.Error("No OpenAI API Key provided.")
 
     client = openai.OpenAI(api_key=openai_api_key)

@@ -1,3 +1,9 @@
+---
+title: thread-gpt
+app_file: app.py
+sdk: gradio
+sdk_version: 4.4.1
+---
 <h1 style="display: flex; align-items: center; justify-content: center;">
   <img src="images/logo.png" alt="ThreadGPT Logo" style="height: 50px; margin-right: 12px; margin-top: -12px;">
   <p>ThreadGPT</p>
