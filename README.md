@@ -43,18 +43,6 @@ Copy the `.env.template` file and fill in your `OPENAI_API_KEY`.
 cp .env.template .env
 ```
 
-### Create the assistant
-
-ThreadGPT utilizes OpenAI's assistant API. To create a new assistant, run the following command:
-
-```bash
-python create_assistant.py
-```
-
-After running the command, you will receive an assistant ID. Add this ID to your `.env` file as the value for `OPENAI_ASSISTANT_ID`.
-
-This command will create an assistant with the default prompt, name, tools, and model (`gpt-4-1106-preview`). You can customize these parameters via command-line arguments to your liking.
-
 ## 🚀 Getting Started
 
 Before proceeding, please ensure that all the installation steps have been successfully completed.
@@ -101,6 +89,7 @@ By default, you will find all outputs under `./data/<PDF_NAME>`. It will have th
 The final output for user consumption is located at `./data/<PDF_NAME>/processed_thread.md`. This file is formatted in Markdown and can be conveniently viewed using any Markdown editor.
 
 #### All Contents
+
 1. `figures/`: This directory contains all the figures, tables, and visuals that have been extracted from the paper.
 2. `<PDF_NAME>.pdf`: This is the original PDF file.
 3. `results.json`: This file contains the results of the layout parsing. It includes an index of all figures, their paths, and captions that were passed to OpenAI.
@@ -115,3 +104,7 @@ To actually share the thread on X/Twitter, you need to set up the credentials in
 ```bash
 python tweet.py ./data/<PDF_NAME>/processed_thread.json
 ```
+
+#### 🔧 Customize Assistant
+
+ThreadGPT utilizes OpenAI's assistant API. To customize the assistant's behavior, you need to modify the `create_assistant.py` file. This script has defaults for the prompt, name, tools, and model (`gpt-4-1106-preview`). You can customize these parameters to your liking.

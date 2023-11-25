@@ -3,9 +3,15 @@ import json
 import os
 
 import gradio as gr
+import openai
+from dotenv import load_dotenv
 from gradio_pdf import PDF
 
-from thread import create_thread, render_markdown
+from create_assistant import INSTRUCTIONS, MODEL
+from thread import create_assistant_then_thread, render_markdown
+
+load_dotenv()
+
 
 OUTPUT_PATH = "data"
 IMAGES_PATH = "images"
@@ -20,8 +26,26 @@ def fix_image_paths_in_thread(thread, base_path):
     return thread
 
 
-def run_create_thread(url_or_path):
-    saved_path = create_thread(url_or_path, OUTPUT_PATH)
+def run_create_thread(
+    url_or_path, openai_api_key, assistant_instructions, assistant_model
+):
+    if openai_api_key is None:
+        raise gr.Error("No OpenAI API Key provided.")
+
+    client = openai.OpenAI(api_key=openai_api_key)
+
+    try:
+        saved_path = create_assistant_then_thread(
+            url_or_path,
+            OUTPUT_PATH,
+            client,
+            assistant_kwargs={
+                "instructions": assistant_instructions,
+                "model": assistant_model,
+            },
+        )
+    except Exception as e:
+        raise gr.Error(e)
 
     with open(os.path.join(saved_path, "processed_thread.json"), "r") as f:
         thread = json.load(f)
@@ -36,13 +60,35 @@ def run_create_thread(url_or_path):
 
 
 with gr.Blocks() as demo:
-    with gr.Row():
-        banner = gr.Markdown(
-            """<div style="display: flex; align-items: center; justify-content: center;">
-  <img src="file/images/logo.png" alt="ThreadGPT Logo" style="height: 60px; margin-right: 12px; margin-top: -12px;">
-  <h1 style="font-size: 48px">ThreadGPT</h1>
-</div>"""
-        )
+    banner = gr.Markdown(
+        """<div style="display: flex; align-items: center; justify-content: center; margin-top: 20px;">
+      <img src="file/images/logo.png" alt="ThreadGPT Logo" style="height: 60px; margin-right: 12px; margin-top: -12px;">
+      <h1 style="font-size: 48px">ThreadGPT</h1>
+    </div>"""
+    )
+
+    with gr.Accordion("Configuration"):
+        with gr.Row():
+            api_key = gr.Textbox(
+                value=os.getenv("OPENAI_API_KEY"),
+                placeholder="sk-**************",
+                label="OpenAI API Key",
+                type="password",
+                interactive=True,
+            )
+            with gr.Column():
+                assistant_instr = gr.Textbox(
+                    value=INSTRUCTIONS,
+                    placeholder="Enter system instructions",
+                    label="System Instructions",
+                    interactive=True,
+                )
+                assistant_model = gr.Textbox(
+                    value=MODEL,
+                    placeholder="Enter model",
+                    label="Model",
+                    interactive=True,
+                )
 
     with gr.Row():
         url_or_path_state = gr.State("")
@@ -72,7 +118,9 @@ with gr.Blocks() as demo:
         [url_or_path_state],
         [pdf],
     ).then(
-        run_create_thread, [url_or_path_state], [md_viewer, json_viewer]
+        run_create_thread,
+        [url_or_path_state, api_key, assistant_instr, assistant_model],
+        [md_viewer, json_viewer],
     )
 
     btn.upload(
@@ -84,7 +132,9 @@ with gr.Blocks() as demo:
         [url_or_path_state],
         [pdf],
     ).then(
-        run_create_thread, [url_or_path_state], [md_viewer, json_viewer]
+        run_create_thread,
+        [url_or_path_state, api_key, assistant_instr, assistant_model],
+        [md_viewer, json_viewer],
     )
 
 if __name__ == "__main__":

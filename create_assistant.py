@@ -1,10 +1,4 @@
-import argparse
-import json
-
-from dotenv import load_dotenv
 from openai import OpenAI
-
-load_dotenv()
 
 NAME = "ThreadGPT"
 INSTRUCTIONS = """Paper Threadoor 📄🧳 specializes in transforming academic papers into engaging Twitter threads. The threads are formatted in a distinct style for clarity and engagement:
@@ -87,31 +81,21 @@ Make sure that your output format is JSON (within a ```json\n``` markdown block)
     }
 ]
 ```"""
-TOOLS = '[{"type": "retrieval"}]'
+TOOLS = [{"type": "retrieval"}]
 MODEL = "gpt-4-1106-preview"
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Create an assistant.")
-    parser.add_argument("--name", default=NAME, help="Name of the assistant")
-    parser.add_argument(
-        "--instructions", default=INSTRUCTIONS, help="Instructions for the assistant"
-    )
-    parser.add_argument("--tools", default=TOOLS, help="Tools for the assistant")
-    parser.add_argument("--model", default=MODEL, help="Model for the assistant")
-    args = parser.parse_args()
 
-    # Parse the JSON string back into a Python object
-    args.tools = json.loads(args.tools)
-
-    client = OpenAI()
-
+def create_assistant(
+    client: OpenAI,
+    name: str = NAME,
+    instructions: str = INSTRUCTIONS,
+    tools: dict = TOOLS,
+    model: str = MODEL,
+):
     assistant = client.beta.assistants.create(
-        name=args.name,
-        instructions=args.instructions,
-        tools=args.tools,
-        model=args.model,
+        name=name,
+        instructions=instructions,
+        tools=tools,
+        model=model,
     )
-
-    print(
-        f'Assistant "{args.name}" has been created with ID: {assistant.id}\n\nTo use it, please add the following line to your .env file:\nOPENAI_ASSISTANT_ID={assistant.id}'
-    )
+    return assistant

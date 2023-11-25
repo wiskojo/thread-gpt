@@ -6,6 +6,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from typing import Optional
 from urllib.parse import urlparse
 
 import layoutparser as lp
@@ -16,13 +17,9 @@ from dotenv import load_dotenv
 from pdf2image import convert_from_bytes
 from pydantic import BaseModel, ConfigDict
 
+from create_assistant import create_assistant
+
 load_dotenv()
-
-
-OPENAI_ASSISTANT_ID = os.environ["OPENAI_ASSISTANT_ID"]
-
-
-client = openai.OpenAI()
 
 
 logging.basicConfig(handlers=[logging.StreamHandler()], level=logging.INFO)
@@ -186,7 +183,7 @@ def process_pdf(content: bytes, model: lp.models.Detectron2LayoutModel, base_pat
     return results
 
 
-def wait_on_run(run, thread):
+def wait_on_run(run, thread, client: openai.OpenAI):
     while run.status == "queued" or run.status == "in_progress":
         run = client.beta.threads.runs.retrieve(
             thread_id=thread.id,
@@ -196,34 +193,40 @@ def wait_on_run(run, thread):
     return run
 
 
-def generate_thread_content(pdf_path: str, results: dict):
+def generate_thread_content(
+    pdf_path: str, results: dict, client: openai.OpenAI, assistant_id: str
+):
     with open(pdf_path, "rb") as f:
         pdf_file = client.files.create(file=f, purpose="assistants")
 
-    thread = client.beta.threads.create()
-
-    message = client.beta.threads.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content=f"{json.dumps(results)}\n\nCreate a thread for this. Your answer must be in JSON, media links should be from the local paths above.",
-        file_ids=[pdf_file.id],
-    )
-
-    run = client.beta.threads.runs.create(
-        thread_id=thread.id, assistant_id=OPENAI_ASSISTANT_ID
-    )
-
-    run = wait_on_run(run, thread)
-
-    messages = client.beta.threads.messages.list(
-        thread_id=thread.id, order="asc", after=message.id
-    )
-
-    # Delete uploaded PDF file
     try:
-        file_deletion_status = client.files.delete(file_id=pdf_file.id)
-    except openai.NotFoundError as e:
-        logger.error(f"Failed to delete file: {e}")
+        thread = client.beta.threads.create()
+
+        message = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"{json.dumps(results)}\n\nCreate a thread for this. Your answer must be in JSON, media links should be from the local paths above.",
+            file_ids=[pdf_file.id],
+        )
+
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id, assistant_id=assistant_id
+        )
+
+        run = wait_on_run(run, thread, client)
+
+        messages = client.beta.threads.messages.list(
+            thread_id=thread.id, order="asc", after=message.id
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate thread content: {e}")
+        raise
+    finally:
+        # Delete uploaded PDF file
+        try:
+            client.files.delete(file_id=pdf_file.id)
+        except Exception as e:
+            logger.error(f"Failed to delete file: {e}")
 
     # OpenAI can return no new messages somehow, catch this and throw error
     if not messages.data or not messages.data[0].content:
@@ -285,7 +288,9 @@ def uri_validator(x):
         return False
 
 
-def create_thread(pdf_url_or_path: str, output_path: str):
+def create_thread(
+    pdf_url_or_path: str, output_path: str, client: openai.OpenAI, assistant_id: str
+):
     # Extract the PDF name from the URL and remove any file extension at the end
     pdf_name = os.path.splitext(pdf_url_or_path.split("/")[-1])[0]
     base_path = os.path.join(output_path, pdf_name)
@@ -307,10 +312,14 @@ def create_thread(pdf_url_or_path: str, output_path: str):
             pdf_content = requests.get(pdf_url_or_path).content
             with open(pdf_path, "wb") as f:
                 f.write(pdf_content)
-        else:
+        elif os.path.isfile(pdf_url_or_path):
             pdf_path = pdf_url_or_path
             with open(pdf_path, "rb") as f:
                 pdf_content = f.read()
+        else:
+            raise ValueError(
+                f"Invalid input: {pdf_url_or_path}. It should be a valid URL or a file path."
+            )
 
         model = lp.models.Detectron2LayoutModel(
             config_path="lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config",
@@ -324,7 +333,7 @@ def create_thread(pdf_url_or_path: str, output_path: str):
         with open(results_path, "w") as f:
             json.dump(results, f, indent=2)
 
-    paper_thread = generate_thread_content(pdf_path, results)
+    paper_thread = generate_thread_content(pdf_path, results, client, assistant_id)
     with open(thread_path, "w") as f:
         json.dump(paper_thread, f, indent=2)
 
@@ -343,6 +352,38 @@ def create_thread(pdf_url_or_path: str, output_path: str):
     return base_path
 
 
+def create_assistant_then_thread(
+    pdf_url_or_path: str,
+    output_path: str,
+    client: openai.OpenAI,
+    assistant_kwargs: Optional[dict] = None,
+):
+    if assistant_kwargs is None:
+        assistant_kwargs = {}
+    try:
+        assistant = create_assistant(client, **assistant_kwargs)
+    except Exception:
+        logger.error("Failed to create assistant", exc_info=True)
+        raise
+    try:
+        saved_path = create_thread(
+            pdf_url_or_path,
+            output_path,
+            client,
+            assistant.id,
+        )
+    except Exception:
+        logger.error("Failed to create thread", exc_info=True)
+        raise
+    finally:
+        try:
+            client.beta.assistants.delete(assistant.id)
+        except Exception:
+            logger.error("Failed to delete assistant", exc_info=True)
+            raise
+    return saved_path
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Process a PDF from a URL or a local path."
@@ -356,6 +397,8 @@ if __name__ == "__main__":
         default="data",
         help="The output directory to store the results.",
     )
-
     args = parser.parse_args()
-    create_thread(args.url_or_path, args.output)
+
+    client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    create_assistant_then_thread(args.url_or_path, args.output, client)
