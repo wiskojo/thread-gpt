@@ -64,7 +64,11 @@ with gr.Blocks() as demo:
         """<div style="display: flex; align-items: center; justify-content: center; margin-top: 20px;">
       <img src="file/images/logo.png" alt="ThreadGPT Logo" style="height: 60px; margin-right: 12px; margin-top: -12px;">
       <h1 style="font-size: 48px">ThreadGPT</h1>
-    </div>"""
+    </div>
+    
+<p align="center" style="font-size: 12px;">🚨 Please be aware that usage of GPT-4 with the assistant API can incur high costs. Make sure to monitor your usage and understand the pricing details provided by OpenAI before proceeding. 🚨
+<br>
+❗ There currently seems to be a bug with the Assistant API where a completed run returns no new messages from the assistant. If you encounter this, please click "Retry 🔁". ❗</p>"""
     )
 
     with gr.Accordion("Configuration"):
@@ -95,10 +99,11 @@ with gr.Blocks() as demo:
         txt = gr.Textbox(
             scale=6,
             show_label=False,
-            placeholder="Enter URL or local path to PDF (e.g., http://example.com/sample.pdf or /path/to/sample.pdf)",
+            placeholder="https://arxiv.org/pdf/1706.03762.pdf",
             container=False,
         )
-        btn = gr.UploadButton("Load PDF 📄", file_types=[".pdf"])
+        upload_btn = gr.UploadButton("Upload PDF 📄", file_types=[".pdf"])
+        retry_btn = gr.Button("Retry 🔄")
 
     with gr.Row(visible=False) as output_row:
         with gr.Column():
@@ -123,11 +128,21 @@ with gr.Blocks() as demo:
         [md_viewer, json_viewer],
     )
 
-    btn.upload(
+    upload_btn.upload(
         lambda path: (path, gr.Row(visible=True), "", ""),
-        [btn],
+        [upload_btn],
         [url_or_path_state, output_row, md_viewer, json_viewer],
     ).then(
+        lambda url_or_path: url_or_path,
+        [url_or_path_state],
+        [pdf],
+    ).then(
+        run_create_thread,
+        [url_or_path_state, api_key, assistant_instr, assistant_model],
+        [md_viewer, json_viewer],
+    )
+
+    retry_btn.click(
         lambda url_or_path: url_or_path,
         [url_or_path_state],
         [pdf],

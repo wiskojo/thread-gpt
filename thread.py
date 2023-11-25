@@ -219,6 +219,11 @@ def generate_thread_content(
         messages = client.beta.threads.messages.list(
             thread_id=thread.id, order="asc", after=message.id
         )
+
+        # TODO: OpenAI can return no new messages somehow (might be a bug, the run completes succesfully but no new messages are listed in the thread), catch this and throw error
+        if not messages.data or not messages.data[0].content:
+            raise ValueError("Unexpected empty response from OpenAI. Please try again.")
+
     except Exception as e:
         logger.error(f"Failed to generate thread content: {e}")
         raise
@@ -228,10 +233,6 @@ def generate_thread_content(
             client.files.delete(file_id=pdf_file.id)
         except Exception as e:
             logger.error(f"Failed to delete file: {e}")
-
-    # OpenAI can return no new messages somehow, catch this and throw error
-    if not messages.data or not messages.data[0].content:
-        raise ValueError("Unexpected empty response from OpenAI. Please try again.")
 
     # Extract JSON content from the message
     message_content = messages.data[0].content[0].text.value
