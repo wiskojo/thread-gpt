@@ -1,13 +1,7 @@
----
-title: thread-gpt
-app_file: app.py
-sdk: gradio
-sdk_version: 4.4.1
----
-<h1 style="display: flex; align-items: center; justify-content: center;">
-  <img src="images/logo.png" alt="ThreadGPT Logo" style="height: 50px; margin-right: 12px; margin-top: -12px;">
-  <p>ThreadGPT</p>
-</h1>
+<h1 align="center">ThreadGPT</h1>
+<p align="center">
+  <img src="images/logo.png" alt="ThreadGPT Logo" style="height: 150px">
+</p>
 
 Struggling to keep up with the latest AI research papers? **ThreadGPT** is here to help. It seamlessly transforms complex academic papers into concise, easy-to-understand threads. Not only does it summarize the text, but it also includes relevant figures, tables, and visuals from the papers directly into the threads. 🧵✨📄
 
