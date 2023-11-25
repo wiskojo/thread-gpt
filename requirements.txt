@@ -8,8 +8,6 @@ pytesseract==0.3.10
 python_dotenv==1.0.0
 Pillow==9.5.0
 requests==2.31.0
-torch==2.0.0
-torchvision==0.15.1
 tweepy==4.14.0
 tweet-counter==0.1.0
 git+https://github.com/facebookresearch/detectron2.git@v0.4

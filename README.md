@@ -34,11 +34,12 @@ git clone https://github.com/wiskojo/thread-gpt
 ### Install dependencies
 
 ```bash
-# Install the required packages
-pip install -r requirements.txt
+# Install PyTorch, torchvision, and torchaudio
+# Please refer to the official PyTorch website (https://pytorch.org) for the installation command that matches your system. Example:
+pip install torch==2.0.0 torchvision==0.15.1
 
-# Install Detectron 2 for layoutparser
-pip install git+https://github.com/facebookresearch/detectron2.git@v0.4
+# Install all other dependencies
+pip install -r requirements.txt
 ```
 
 ### Configure environment variables
